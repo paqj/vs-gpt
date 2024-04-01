@@ -1,4 +1,9 @@
 import time
+from langchain.document_loaders import UnstructuredFileLoader
+from langchain.embeddings import CacheBackedEmbeddings, OpenAIEmbeddings
+from langchain.storage import LocalFileStore
+from langchain.text_splitter import CharacterTextSplitter
+from langchain.vectorstores.faiss import FAISS
 import streamlit as st
 
 st.set_page_config(
@@ -6,36 +11,76 @@ st.set_page_config(
     page_icon="📃",
 )
 
-st.title("DocumentGPT")
+# 동일한 file(hashing)이면 구동되지 않고, 직전에 실행된 결과를 리턴.
+@st.cache_data(show_spinner="Embdding file...")
+def embed_file(file):
+    file_content = file.read()
+    # Caching
+    file_path = f"./.cache/files/{file.name}"
+    with open(file_path, "wb") as f:
+        f.write(file_content)
+    cache_dir = LocalFileStore(f"./.cache/embeddings/{file.name}")
 
-# st.session_state : data가 캐싱되는 곳.
-# data가 변경될 떄 마다 전체 page가 refresh되기 떄문에 
-# 전역 리스트 변수가 아닌 별도의 공간을 줘야 함.
-if "messages" not in st.session_state:
-    st.session_state["messages"] = []
+    # splitter
+    splitter = CharacterTextSplitter.from_tiktoken_encoder(
+        separator="\n",
+        chunk_size=600,
+        chunk_overlap=100,
+    )
+    loader = UnstructuredFileLoader("./files/chapter_one.txt")
+    docs = loader.load_and_split(text_splitter=splitter)
 
-# 신규 메세지는 저장을 하고
-# 캐싱된 메세지를 보여주는 용도로 쓸 때는 Write
+    # embedding
+    embeddings = OpenAIEmbeddings()
+    cached_embeddings = CacheBackedEmbeddings.from_bytes_store(embeddings, cache_dir)
+    vectorstore = FAISS.from_documents(docs, cached_embeddings)
+    retriever = vectorstore.as_retriever()
+    return retriever
+
+
 def send_message(message, role, save=True):
     with st.chat_message(role):
-        st.write(message)
+        st.markdown(message)
     if save:
         st.session_state["messages"].append({"message": message, "role": role})
 
-# 캐싱된 메시지를 보여줌
-for message in st.session_state["messages"]:
-    send_message(
-        message["message"],
-        message["role"],
-        save=False,
+
+def paint_history():
+    for message in st.session_state["messages"]:
+        send_message(message["message"], message["role"], save=False)
+
+
+st.title("DocumentGPT")
+
+st.markdown(
+    """
+Welcome!
+            
+Use this chatbot to ask questions to an AI about your files!
+
+Upload your files on the sidebar.
+"""
+)
+
+# Uploader를 sidebar로 이동
+with st.sidebar:
+    file = st.file_uploader(
+        "Upload a .txt .pdf or .docx file",
+        type=["pdf", "txt", "docx"],
     )
 
-message = st.chat_input("Send a message to the ai")
+if file:
+    retriever = embed_file(file)
 
-if message:
-    send_message(message, "human")
-    time.sleep(2)
-    send_message(f"You said: {message}", "ai")
+    send_message("I'm ready! Ask away!", "ai", save=False)
+    paint_history()
 
-    with st.sidebar:
-        st.write(st.session_state)
+    message = st.chat_input("Ask Anything about your file...")
+
+    if message:
+        send_message(message, "human")
+        send_message("lala", "ai")
+
+# file이 없으면, history 초기화
+else:
+    st.session_state["messages"] = []
