@@ -1,24 +1,11 @@
 import streamlit as st
 from langchain.prompts import PromptTemplate
+from datetime import datetime
 
-st.title("Hello world!")
-st.subheader("Welcom to Streamlit!")
-st.markdown("""
-    ### I love it!
-""")
 
-# write : string 뿐만 아니라 어떤 데이터 타입이던 보여줌
-# st.write("hello")
-# st.write([1,2,3])
-# st.write({"X": 1, "Y": 2})
-# st.write(PromptTemplate)
-
-# p = PromptTemplate.from_template("xxx")
-# st.write(p)
-
-# 7.1 Magic
-# # magic : write를 사용하지 않고, 변수만 쓰면 자동으로 write
-# p
+# streamlit 은 데이터가 바뀌면 코드 전체가 Refresh 됨
+today = datetime.today().strftime("%H:%M:%S")
+st.title(today)
 
 
 a = [1,2,3]
@@ -28,4 +15,14 @@ d = {"x": 1}
 a
 d
 
-st.selectbox("Choose your Model", ("GPT 3.5", "GPT 4.0"))
+model = st.selectbox("Choose your Model", ("GPT 3.5", "GPT 4.0"))
+
+# 전체 페이지를 Refresh 함 -> 조건문으로 요소를 숨기는 것 처럼 보이게 할 수 있음.
+if model == "GPT 3.5":
+    st.write("Cheap!!")
+else:
+    name = st.text_input("What is your name?")
+    name
+
+    value = st.slider("temperature", min_value=0.1, max_value=1.0)
+    value
