@@ -1,14 +1,20 @@
-import time
+from langchain.prompts import ChatPromptTemplate
 from langchain.document_loaders import UnstructuredFileLoader
 from langchain.embeddings import CacheBackedEmbeddings, OpenAIEmbeddings
+from langchain.schema.runnable import RunnableLambda, RunnablePassthrough
 from langchain.storage import LocalFileStore
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.vectorstores.faiss import FAISS
+from langchain.chat_models import ChatOpenAI
 import streamlit as st
 
 st.set_page_config(
     page_title="DocumentGPT",
     page_icon="📃",
+)
+
+llm = ChatOpenAI(
+    temperature=0.1,
 )
 
 # 동일한 file(hashing)이면 구동되지 않고, 직전에 실행된 결과를 리턴.
@@ -49,6 +55,22 @@ def paint_history():
     for message in st.session_state["messages"]:
         send_message(message["message"], message["role"], save=False)
 
+def format_docs(docs):
+    return "\n\n".join(document.page_content for document in docs)
+
+prompt = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            """
+            Answer the question using ONLY the following context. If you don't know the answer just say you don't know. DON'T make anything up.
+            
+            Context: {context}
+            """,
+        ),
+        ("human", "{question}"),
+    ]
+)
 
 st.title("DocumentGPT")
 
@@ -79,7 +101,18 @@ if file:
 
     if message:
         send_message(message, "human")
-        send_message("lala", "ai")
+        # User의 Input에서 retriver를 호출 -> 추출한 docs를 -> prompt에 전달(context, question) -> llm
+        chain = (
+            {
+                "context": retriever | RunnableLambda(format_docs),
+                "question": RunnablePassthrough(), # "question": message
+            }
+            | prompt
+            | llm
+        )
+        response = chain.invoke(message)
+        send_message(response.content, "ai")
+
 
 # file이 없으면, history 초기화
 else:
