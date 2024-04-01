@@ -6,6 +6,8 @@ from langchain.storage import LocalFileStore
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.vectorstores.faiss import FAISS
 from langchain.chat_models import ChatOpenAI
+from langchain.callbacks.base import BaseCallbackHandler
+
 import streamlit as st
 
 st.set_page_config(
@@ -13,8 +15,30 @@ st.set_page_config(
     page_icon="📃",
 )
 
+# llm의 event를 listen -> 작용
+# *args, **kwargs : 많은 argument나 keyword를 받음 on_llm_start(1,2,3,4,a=1,b=2,c=3...)
+# llm start -> message_box 초기화
+# llm에서 token을 생성할 때 마다 message_box에 계속 추가
+# llm end -> message save
+class ChatCallbackHandler(BaseCallbackHandler):
+    message = ""
+
+    def on_llm_start(self, *args, **kwargs):
+        self.message_box = st.empty()
+
+    def on_llm_end(self, *args, **kwargs):
+        save_message(self.message, "ai")
+
+    def on_llm_new_token(self, token, *args, **kwargs):
+        self.message += token
+        self.message_box.markdown(self.message)
+
 llm = ChatOpenAI(
     temperature=0.1,
+    streaming=True,
+    callbacks=[
+        ChatCallbackHandler(),
+    ],
 )
 
 # 동일한 file(hashing)이면 구동되지 않고, 직전에 실행된 결과를 리턴.
@@ -43,12 +67,14 @@ def embed_file(file):
     retriever = vectorstore.as_retriever()
     return retriever
 
+def save_message(message, role):
+    st.session_state["messages"].append({"message": message, "role": role})
 
 def send_message(message, role, save=True):
     with st.chat_message(role):
         st.markdown(message)
     if save:
-        st.session_state["messages"].append({"message": message, "role": role})
+        save_message(message, role)
 
 
 def paint_history():
@@ -110,8 +136,10 @@ if file:
             | prompt
             | llm
         )
-        response = chain.invoke(message)
-        send_message(response.content, "ai")
+
+        # ai의 답변으로 보이게 함
+        with st.chat_message("ai"):
+            response = chain.invoke(message)
 
 
 # file이 없으면, history 초기화
