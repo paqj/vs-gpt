@@ -1,28 +1,49 @@
 import streamlit as st
-from langchain.prompts import PromptTemplate
-from datetime import datetime
 
 
-# streamlit 은 데이터가 바뀌면 코드 전체가 Refresh 됨
-today = datetime.today().strftime("%H:%M:%S")
-st.title(today)
+# # with 패턴을 쓰면 component에 내용을 바로 넣을 수 있음
+# st.title("title")
+
+# with st.sidebar:
+#     st.title("sidebar title")
+#     st.text_input("xxx")
 
 
-a = [1,2,3]
+# tab_one, tab_two, tab_three = st.tabs(["A", "B", "C"])
 
-d = {"x": 1}
+# with tab_one:
+#     st.write("1")
 
-a
-d
+# with tab_two:
+#     st.write("2")
 
-model = st.selectbox("Choose your Model", ("GPT 3.5", "GPT 4.0"))
+# with tab_three:
+#     st.write("3")
 
-# 전체 페이지를 Refresh 함 -> 조건문으로 요소를 숨기는 것 처럼 보이게 할 수 있음.
-if model == "GPT 3.5":
-    st.write("Cheap!!")
-else:
-    name = st.text_input("What is your name?")
-    name
 
-    value = st.slider("temperature", min_value=0.1, max_value=1.0)
-    value
+st.set_page_config(
+    page_title="FullstackGPT Home",
+    page_icon="🤖",
+)
+
+# pages folder에 들어 있으면 sidebar에 목록이 생김.
+# folder 내의 파일 순서대로 정렬됨
+
+st.title("FullstackGPT Home")
+
+st.markdown(
+    """
+# Hello!
+            
+Welcome to my FullstackGPT Portfolio!
+            
+Here are the apps I made:
+            
+- [ ] [DocumentGPT](/DocumentGPT)
+- [ ] [PrivateGPT](/PrivateGPT)
+- [ ] [QuizGPT](/QuizGPT)
+- [ ] [SiteGPT](/SiteGPT)
+- [ ] [MeetingGPT](/MeetingGPT)
+- [ ] [InvestorGPT](/InvestorGPT)
+"""
+)
