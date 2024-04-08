@@ -5,6 +5,15 @@ from langchain.text_splitter import CharacterTextSplitter
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 from langchain.callbacks import StreamingStdOutCallbackHandler
+from langchain.schema import BaseOutputParser
+import json
+
+
+class JsonOutputParser(BaseOutputParser):
+    def parse(self, text):
+        # response에서 content를 제외한 부분을 삭제
+        text = text.replace("```", "").replace("json", "")
+        return json.loads(text)
 
 st.set_page_config(
     page_title="QuizGPT",
@@ -235,6 +244,9 @@ with st.sidebar:
                 docs = retriever.get_relevant_documents(topic)
 
 
+output_parser = JsonOutputParser()
+
+
 if not docs:
     st.markdown(
         """
@@ -250,9 +262,7 @@ else:
     start = st.button("Generate Quiz")
 
     if start:
-        questions_response = questions_chain.invoke(docs)
-        st.write(questions_response.content)
-        formatting_response = formatting_chain.invoke(
-            {"context": questions_response.content}
-        )
-        st.write(formatting_response.content)
+        # questions_chain과 formatting_chain을 합쳐서 Output parser까지 적용
+        chain = {"context": questions_chain} | formatting_chain | output_parser
+        response = chain.invoke(docs)
+        st.write(response)
