@@ -272,10 +272,21 @@ if not docs:
     """
     )
 else:
-    # 버튼 생성   
-    start = st.button("Generate Quiz")
+    # topic이 존재하면 캐싱한 결과를 보내고, 없으면 새로 hashing
+    response = run_quiz_chain(docs, topic if topic else file.name)
 
-    if start:
-        # topic이 존재하면 캐싱한 결과를 보내고, 없으면 새로 hashing
-        response = run_quiz_chain(docs, topic if topic else file.name)
-        st.write(response)
+    # form UI를 사용해서 질문과 답을 구현함
+    with st.form("questions_form"):
+        for question in response["questions"]:
+            st.write(question["question"])
+            # Streamlit은 Form 내부의 radio를 선택하는 동안에는 Update 하지 않고, Submit을 누를때 Update해줌.
+            value = st.radio(
+                "Select an option.",
+                [answer["answer"] for answer in question["answers"]],
+                index=None, # default : None
+            )
+            if {"answer": value, "correct": True} in question["answers"]:
+                st.success("Correct!")
+            elif value is not None:
+                st.error("Wrong!")
+        button = st.form_submit_button()
