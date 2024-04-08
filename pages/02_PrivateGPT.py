@@ -40,14 +40,14 @@ class ChatCallbackHandler(BaseCallbackHandler):
         self.message += token
         self.message_box.markdown(self.message)
 
-llm = ChatOllama(
-    model="mistral:latest",
-    temperature=0.1,
-    streaming=True,
-    callbacks=[
-        ChatCallbackHandler(),
-    ],
-)
+# llm = ChatOllama(
+#     model="mistral:latest",
+#     temperature=0.1,
+#     streaming=True,
+#     callbacks=[
+#         ChatCallbackHandler(),
+#     ],
+# )
 
 # 동일한 file(hashing)이면 구동되지 않고, 직전에 실행된 결과를 리턴.
 @st.cache_data(show_spinner="Embdding file...")
@@ -125,6 +125,23 @@ with st.sidebar:
     file = st.file_uploader(
         "Upload a .txt .pdf or .docx file",
         type=["pdf", "txt", "docx"],
+    )
+
+    model = st.selectbox("Choose Your model", ("mistral","llama2"))
+    if model == "mistral":
+        llm = ChatOllama(
+        model="mistral:latest",
+        temperature=0.1,
+        streaming=True,
+        callbacks=[ChatCallbackHandler(),
+        ],
+    )
+    else:
+        llm = ChatOllama(
+        model="llama2:latest",
+        temperature=0.1,
+        streaming=True,
+        callbacks=[ChatCallbackHandler(),],
     )
 
 if file:
