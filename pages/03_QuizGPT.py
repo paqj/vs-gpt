@@ -219,6 +219,23 @@ def split_file(file):
     docs = loader.load_and_split(text_splitter=splitter)
     return docs
 
+# Caching
+# _doc : streamlit에서는 parameter를 hashing 하는데, docs는 hashing이 될 수 없음
+@st.cache_data(show_spinner="Making quiz...")
+def run_quiz_chain(_docs, topic):
+    # questions_chain과 formatting_chain을 합쳐서 Output parser까지 적용
+    chain = {"context": questions_chain} | formatting_chain | output_parser
+    return chain.invoke(_docs)
+
+
+@st.cache_data(show_spinner="Searching Wikipedia...")
+def wiki_search(term):
+    # 최상단 n개의 검색 결과
+    retriever = WikipediaRetriever(top_k_results=5)
+    docs = retriever.get_relevant_documents(term)
+    return docs
+
+
 with st.sidebar:
     docs = None
     choice = st.selectbox(
@@ -238,10 +255,7 @@ with st.sidebar:
     else:
         topic = st.text_input("Search Wikipedia...")
         if topic:
-            # 최상단 n개의 검색 결과
-            retriever = WikipediaRetriever(top_k_results=5)
-            with st.status("Seaching Wikipedia..."):
-                docs = retriever.get_relevant_documents(topic)
+            docs = wiki_search(topic)
 
 
 output_parser = JsonOutputParser()
@@ -262,7 +276,6 @@ else:
     start = st.button("Generate Quiz")
 
     if start:
-        # questions_chain과 formatting_chain을 합쳐서 Output parser까지 적용
-        chain = {"context": questions_chain} | formatting_chain | output_parser
-        response = chain.invoke(docs)
+        # topic이 존재하면 캐싱한 결과를 보내고, 없으면 새로 hashing
+        response = run_quiz_chain(docs, topic if topic else file.name)
         st.write(response)
