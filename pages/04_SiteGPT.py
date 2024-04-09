@@ -162,6 +162,7 @@ if url:
             st.error("Please write down a Sitemap URL.")
     else:
         retriever = load_website(url)
+        # query -> chain -> retriever : docs -> get_answer -> choose_answer
         query = st.text_input("Ask a question to the website.")
         if query:
             chain = (
