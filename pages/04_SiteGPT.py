@@ -12,6 +12,7 @@ from langchain.storage import LocalFileStore
 
 from tempfile import gettempdir
 import os
+from urllib.parse import urlparse
 
 
 llm = ChatOpenAI(
@@ -55,7 +56,6 @@ class ChatCallbackHandler(BaseCallbackHandler):
 
     def on_llm_new_token(self, token, *args, **kwargs):
         self.message += token
-        self.message_box.markdown(self.message)
 
 
 
@@ -77,7 +77,18 @@ def load_website(url):
     # file_cache_dir = os.path.join(cache_base_dir, file.name)
     # os.makedirs(file_cache_dir, exist_ok=True)
     # cache_dir = LocalFileStore(file_cache_dir)
-    cache_dir = LocalFileStore(f"./.cache/site_embeddings/openai")
+    
+    # Domain 추출
+    parsed_url = urlparse(url)
+    domain = parsed_url.netloc.split('.')
+
+    if len(domain) > 2:
+        domain = domain[-2]
+    else:
+        domain = domain[0]
+
+    cache_dir_path = os.path.join(".cache", "site_embeddings", domain)
+    cache_dir = LocalFileStore(cache_dir_path)
 
     splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
         chunk_size=1000,
@@ -87,7 +98,9 @@ def load_website(url):
     loader = SitemapLoader(
         url,
         filter_urls=[
-            r"^(.*\/blog\/).*",
+            r"^(.*\/ai-gateway\/).*",
+            r"^(.*\/vectorize\/).*",
+            r"^(.*\/workers-ai\/).*",
         ],
         parsing_function=parse_page,
     )
@@ -238,13 +251,6 @@ with st.sidebar:
             max_token_limit=50,
             return_messages=True,
         )
-    # else:
-        # API 키 입력을 요청하는 메시지
-
-        # else:
-        #     # `llm` 객체와 관련된 코드 실행을 중지
-        #     st.stop()
-
 
 if url:
     if ".xml" not in url:
@@ -271,11 +277,8 @@ if url:
                 | RunnableLambda(choose_answer)
             )
 
-            # ai의 답변으로 보이게 함
             with st.chat_message("ai"):
-                response = chain.invoke(query)
-
-            # result = chain.invoke(query)
-            # st.markdown(result.content.replace("$", "\$"))
+                result = chain.invoke(query)
+                st.markdown(result.content.replace("$", "\$"))
 else:
     st.session_state["messages"] = []
