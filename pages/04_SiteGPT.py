@@ -1,6 +1,5 @@
 import streamlit as st
-from langchain.document_loaders import AsyncChromiumLoader
-from langchain.document_transformers import Html2TextTransformer
+from langchain.document_loaders import SitemapLoader
 
 # GPT가 특정 Site를 크롤링하고 그 정보로 알려줌.
 # 1. playwright, chromimum
@@ -11,8 +10,13 @@ st.set_page_config(
     page_icon="🖥️",
 )
 
-# HTML을 Text로 변경
-html2text_transformer = Html2TextTransformer()
+@st.cache_data(show_spinner="Loading website...")
+def load_website(url):
+    # html -> text 까지
+    loader = SitemapLoader(url)
+    loader.requests_per_second = 5
+    docs = loader.load()
+    return docs
 
 st.markdown(
     """
@@ -29,9 +33,10 @@ with st.sidebar:
 
 
 if url:
-    # Crawling
-    loader = AsyncChromiumLoader([url])
-    docs = loader.load()
-    # HTML 태그 없이 content만
-    transformed = html2text_transformer.transform_documents(docs)
-    st.write(docs)
+    if ".xml" not in url:
+        with st.sidebar:
+            st.error("Please write down a Sitemap URL.")
+    else:
+        docs = load_website(url)
+        st.write(docs)
+        
