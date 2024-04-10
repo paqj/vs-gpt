@@ -46,10 +46,10 @@ def parse_page(soup):
 
 # Streaming
 class ChatCallbackHandler(BaseCallbackHandler):
-    message = ""
+    # message = ""
 
     def on_llm_start(self, *args, **kwargs):
-        self.message_box = st.empty()
+        self.message = ""
 
     def on_llm_end(self, *args, **kwargs):
         save_message(self.message, "ai")
