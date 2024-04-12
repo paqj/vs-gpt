@@ -1,7 +1,7 @@
 from langchain.tools import DuckDuckGoSearchResults
 import json
 import streamlit as st
-import openai as client
+import openai
 import time
 from langchain.tools import WikipediaQueryRun
 from langchain.utilities import WikipediaAPIWrapper
@@ -17,11 +17,19 @@ st.markdown(
             
     Welcome to AssistantGPT.
             
-    Write down the name of a company and our Agent will do the research for you.
+    Write down the issue and our Assistant will do the research for you.
 """
 )
 
-query = st.text_input("Write the name of the company you are interested on.")
+with st.sidebar:
+    user_api_key = st.text_input("Please enter your API key on app page")
+
+    if user_api_key:
+        st.session_state['api_key'] = user_api_key
+        st.write("API Key Complete")
+
+api_key = st.session_state.get('api_key', None)
+client = openai.OpenAI(api_key=api_key)
 
 # Tools
 def get_issue_from_ddg(inputs):
@@ -77,13 +85,12 @@ functions = [
 ]
 
 def setup_openai_assistant():
-    if 'assistant' not in st.session_state:
-        st.session_state.assistant = client.beta.assistants.create(
-            name="Investor Assistant For Streamlit",
-            instructions="You help users do research on publicly traded companies and you help users decide if they should buy the stock or not.",
-            model="gpt-4-1106-preview", # https://platform.openai.com/playground?mode=assistant : Model List
-            tools=functions,
-        )
+    st.session_state.assistant = client.beta.assistants.create(
+        name="Investor Assistant For Streamlit",
+        instructions="You help users do research on publicly traded companies and you help users decide if they should buy the stock or not.",
+        model="gpt-4-1106-preview", # https://platform.openai.com/playground?mode=assistant : Model List
+        tools=functions,
+    )
 
     return st.session_state.assistant
 
@@ -131,36 +138,42 @@ def submit_tool_outputs(run_id, thread_id):
         run_id=run_id, thread_id=thread_id, tool_outputs=outputs
     )
 
-if query:
-    # 임시
-    # assistant_id = os.environ.get("OPENAI_ASSISTANT_ID")
-    
-    # assistant_id = assistant_id
-    assistant = setup_openai_assistant()
 
-    thread = client.beta.threads.create(
-        messages=[
-            {
-                "role": "user",
-                "content": query,
-            }
-        ]
-    )
 
-    run = client.beta.threads.runs.create(
-        thread_id=thread.id,
-        # assistant_id=assistant_id,
-        assistant_id=assistant.id,
-    )
+if api_key:
+    query = st.text_input("Write the issue you are interested on.")
 
-    status = get_run(run.id, thread.id).status
+    if query:
+        assistant = setup_openai_assistant()
 
-    while status != "completed":
-        if status == "requires_action":
-            submit_tool_outputs(run.id, thread.id)
+        thread = client.beta.threads.create(
+            messages=[
+                {
+                    "role": "user",
+                    "content": query,
+                }
+            ]
+        )
 
-        time.sleep(2)
+        run = client.beta.threads.runs.create(
+            thread_id=thread.id,
+            assistant_id=assistant.id,
+        )
 
         status = get_run(run.id, thread.id).status
 
-    get_messages(thread.id)
+        while status != "completed":
+            if status == "requires_action":
+                submit_tool_outputs(run.id, thread.id)
+
+            time.sleep(2)
+
+            status = get_run(run.id, thread.id).status
+
+        get_messages(thread.id)
+else:
+    st.markdown(
+        """
+        Please enter your OpenAI key on Sidebar
+    """
+    )
