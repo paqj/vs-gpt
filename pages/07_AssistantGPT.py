@@ -158,12 +158,12 @@ def get_tool_outputs(run_id, thread_id):
     run = get_run(run_id, thread_id)
     outputs = []
 
-    print(run)
-
     for action in run.required_action.submit_tool_outputs.tool_calls:
         action_id = action.id
         function = action.function
-        print(f"Calling function: {function.name} with arg {function.arguments}")
+        
+        st.write(f"Calling function: {function.name} with arg {function.arguments}")
+        
         outputs.append(
             {
                 "output": functions_map[function.name](json.loads(function.arguments)),
@@ -179,7 +179,8 @@ def submit_tool_outputs(run_id, thread_id):
     )
 
 if company:
-    assistant = setup_openai_assistant()
+    assistant_id = "asst_G2nsxkS20kQ0CoT2naIeW0Pf"
+    # assistant = setup_openai_assistant()
 
     thread = client.beta.threads.create(
         messages=[
@@ -192,7 +193,8 @@ if company:
 
     run = client.beta.threads.runs.create(
         thread_id=thread.id,
-        assistant_id=assistant.id,
+        assistant_id=assistant_id,
+        # assistant_id=assistant.id,
     )
 
     status = get_run(run.id, thread.id).status
