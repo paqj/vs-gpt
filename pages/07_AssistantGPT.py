@@ -4,6 +4,8 @@ import json
 import streamlit as st
 import openai as client
 import time
+import os
+
 
 st.set_page_config(
     page_title="AssistantGPT",
@@ -21,6 +23,9 @@ st.markdown(
 )
 
 company = st.text_input("Write the name of the company you are interested on.")
+
+# 임시
+assistant_id = os.environ.get("OPENAI_ASSISTANT_ID")
 
 # Tools
 def get_ticker(inputs):
@@ -122,8 +127,6 @@ functions = [
     },
 ]
 
-st.write(company)
-
 def setup_openai_assistant():
     if 'assistant' not in st.session_state:
         st.session_state.assistant = client.beta.assistants.create(
@@ -151,8 +154,9 @@ def get_messages(thread_id):
     messages = list(messages)
     messages.reverse()
     for message in messages:
-        print(f"{message.role}: {message.content[0].text.value}")
-        st.write(f"{message.role}: {message.content[0].text.value}")
+        content = message.content[0].text.value.replace("$", "\$")
+
+        st.write(f"{message.role}: {content}")
 
 def get_tool_outputs(run_id, thread_id):
     run = get_run(run_id, thread_id)
@@ -179,8 +183,8 @@ def submit_tool_outputs(run_id, thread_id):
     )
 
 if company:
-    assistant_id = "asst_G2nsxkS20kQ0CoT2naIeW0Pf"
-    # assistant = setup_openai_assistant()
+    # assistant_id = assistant_id
+    assistant = setup_openai_assistant()
 
     thread = client.beta.threads.create(
         messages=[
@@ -193,8 +197,8 @@ if company:
 
     run = client.beta.threads.runs.create(
         thread_id=thread.id,
-        assistant_id=assistant_id,
-        # assistant_id=assistant.id,
+        # assistant_id=assistant_id,
+        assistant_id=assistant.id,
     )
 
     status = get_run(run.id, thread.id).status
